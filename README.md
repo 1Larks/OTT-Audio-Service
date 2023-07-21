@@ -1,8 +1,8 @@
-<h3 title="Larks' OTT Service"> Larks' OTT Audio Service>
+<h3 title="Larks' OTT Service">
+
+>This is my OTT Audio Service Project
 
 
-
-This is my OTT Audio Service project
 
 The project is made from 2 main parts, the server itself, and the client.
 The server is written in C and the client in Python.
