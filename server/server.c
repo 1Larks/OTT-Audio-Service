@@ -167,8 +167,6 @@ int main(){
     //initialise server socket
     sockfd=initSockfd(address);
 
-    //set master socket to allow multiple connections , 
-    //this is just a good habit, it will work without this 
     if( setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) < 0 ){  
         error("error in setsockopt");  
     }  
