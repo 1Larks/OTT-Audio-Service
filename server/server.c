@@ -23,28 +23,21 @@ void error(const char* msg){
     perror(msg);
     exit(EXIT_FAILURE);}
 
-//TODO
-int getSongIdByName(char* songName){
-    FILE* songs=fopen("songs.txt", "r");
-
-}
-
 //type 0-null, 1-user 2-admin 3-artist
 struct client{
     int sock;
     int type;
     char name[16];
     char pass[16];
+    long int bytesSent;
+    int paused;
 };
-
-
-void printClient(struct client* cli){
-    printf("name: %s pass: %s type: %d\n", cli->name, cli->pass, cli->type);
-}
 
 void resetClient(struct client* cli){
     cli->sock=0;
     cli->type=0;
+    cli->paused=0;
+    cli->bytesSent=0;
 }
 
 int initSockfd(struct sockaddr_in address){
@@ -66,7 +59,7 @@ int initSockfd(struct sockaddr_in address){
     return sockfd;
 }
 
-//TEMP, CHANGE ASAP!!!!
+//TEMP
 int login(char* info, struct client* user){
     int i=0;
     while (info[i]!=':'){
@@ -81,16 +74,15 @@ int login(char* info, struct client* user){
     return 0;
 }
 
-int search(struct client* user, char* entry, int entryLength){
+int search(struct client* user, char* entry){
     FILE *songs=fopen("songs.txt", "r");
-    char buffer[1024];
+    char buffer[512];
     int numLines=0, keepReading=TRUE, currLine=0;
     char result[2048]="";
     if ( songs==NULL ){
         send(user->sock, "SRCERR", MSGLEN, 0);
         return 1;
     }
-    printf("Entering while loop\n");
     while(keepReading)
     {
         fgets(buffer, 512, songs);
@@ -100,7 +92,6 @@ int search(struct client* user, char* entry, int entryLength){
         }else{
 
             if(strstr(buffer, entry)){
-                printf("Fount a match\n");
                 int j=strlen(result), i;
                 for(i=0;buffer[i]!='\0';i++){
                     result[i+j]=buffer[i];
@@ -113,9 +104,33 @@ int search(struct client* user, char* entry, int entryLength){
     }
     send(user->sock, "SRCSUC", MSGLEN, 0);
     send(user->sock, result, sizeof(result), 0);
+    fclose(songs);
     return 0;
-
 }
+
+int playSong(struct client* user, char* ID, int ID_Len){
+    char path[7+ID_Len], buffer[6144];
+    strcat(path, "songs/");
+    strcat(path, ID);
+    FILE* song=fopen(path, "rb");
+    if ( song==NULL ){
+        return 1;
+    }
+    while ( !feof(song) && !user->paused)
+    {
+        fread(buffer, sizeof(buffer), 1, song);
+        send(user->sock, buffer, sizeof(buffer), 0);
+        user->bytesSent+=sizeof(buffer);
+        fseek(song, user->bytesSent, SEEK_SET);
+    }
+
+    if ( !user->paused ){
+        user->bytesSent=0;
+    }
+    send(user->sock, "Done", 4, 0);
+    return 0;
+}
+
 //TODO: change login system- make it secure, create a LOGIN cmd for saving account info (mostly for client-side but still)
 void handleCommands(struct client* user, char* buffer){
         //for unlogged clients
@@ -126,21 +141,27 @@ void handleCommands(struct client* user, char* buffer){
                 }
             }
             else{
-                printClient(user);
                 if ( (send(user->sock, "LOGSUC", MSGLEN, 0)) <0){
                     error("Error at sending\n");
                 }
             }
         }
         else{
-            char cmd[7];
-            strncpy(cmd, buffer, 6);
+            char cmd[6];
+            strncpy(cmd, buffer, MSGLEN);
             //search command
-            if ( strcmp(cmd,"SEARCH")==0 )
-            {    
-                search(user, &buffer[6], strlen(&buffer[6]));
+            if ( strncmp(cmd,"SRCH:", 5)==0 )
+            { 
 
-            
+                search(user, &buffer[5]);
+
+            }
+            if ( strncmp(cmd, "PLAY:", 5) )
+            {
+                user->paused=0;
+                playSong(user, &buffer[5], sizeof(&buffer[5]));
+                
+                
             }
 
             }
@@ -160,8 +181,7 @@ int main(){
     
     //initialise all client sockets
     for (i=0;i<SERVER_BACKLOG; i++){
-        clientSocket[i].sock=0;
-        clientSocket[i].type=0;
+        resetClient(&clientSocket[i]);
     }
 
     //initialise server socket

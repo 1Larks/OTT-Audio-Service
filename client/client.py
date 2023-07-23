@@ -1,29 +1,47 @@
 import socket
 import tkinter
+import AudioBuffer
+#TODO: login system, improve search system
 
+#Server config
 ADDR=("10.0.2.15", 31311)
+sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+sock.connect(ADDR)
 
-#username
-USERNAME=""
-
-#general window config
+#Main window config
 root=tkinter.Tk()
-root.title("Larks' OTT Service!")
+root.title("Larks' OTT Service")
 root.geometry('900x700')
 root.resizable(False, False)
 root['background']='#28282B'
 
-sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-sock.connect(ADDR)
+USERNAME=""
+
+audioBuffer=AudioBuffer.Audio_Buffer()
+
+def playSong(songID):
+    sock.send("PLAY:"+songID)
+    audioBuffer.startAudioThread()
+    i=1
+    while audioBuffer.playing:
+        data=sock.recv(AudioBuffer.ChunkSize)
+        if data.rstrip(b'\x00').decode()=="Done":
+            audioBuffer.playing=False
+        else:
+            audioBuffer.addChunk(data, i)
+        
+        i+=1
+
+
 
 def search(entry: str):
     global sock
 
-    msg="SEARCH"+entry
+    msg="SRCH:"+entry
     sock.send(msg.encode())
     mainPage(entry)
 
-#TEMPORARY: CHANGE ASAP!!!!!
+#TEMPORARY
 def login(username:str, password:str):
     global sock
     info=username+':'+password
@@ -97,7 +115,7 @@ def loginPage():
             errLabel.place(x=300, y=425, width=300, height=50)
         
 
-    loginButton=tkinter.Button(root, text='Login',font=("arial", 18), command=validLogin, activebackground='#28282B', activeforeground='#FAEDE3', background='#28282B', foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
+    loginButton=tkinter.Button(root, text='Login',font=("arial", 18), command=validLogin, activebackground='black', activeforeground='#FAEDE3', background='#28282B', foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
     loginButton.pack()
     loginButton.place(x=347, y=375, width=200, height=50)
     
@@ -120,11 +138,12 @@ def mainPage(entry: str=""):
         else:
             pass
             
-    SearchButton=tkinter.Button(text='Search', command=validSearch, activebackground='#28282B', activeforeground='#FAEDE3', background='#28282B', foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
+    SearchButton=tkinter.Button(text='Search', command=validSearch, activebackground='black', activeforeground='#FAEDE3', background='#28282B', 
+                                foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
     SearchButton.pack()
     SearchButton.place(x=551, y=5, width=50, height=30)
     
-    WelcomeLabel=tkinter.Label(root, text=USERNAME, font=("arial", 14), background='#28282B', foreground='#FAEDE3')
+    WelcomeLabel=tkinter.Label(root, text=("Hello, "+USERNAME), font=("arial", 14), background='#28282B', foreground='#FAEDE3')
     WelcomeLabel.pack()
     WelcomeLabel.place(x=600, y=10, width=250, height=25)
 
@@ -135,38 +154,88 @@ def mainPage(entry: str=""):
             results=sock.recv(2048)
             results=results.rstrip(b'\x00')
             results=results.decode()
-            showingResults=tkinter.Label(root, text=("Showing results for "+entry+':'),
-                                         font=("arial", 22), background='#28282B', foreground='#FAEDE3').grid(row=0, column=0, sticky=tkinter.W)
+            showingResults=tkinter.Label(root, anchor=tkinter.W, text=("Showing results for "+entry+':'),
+                                         font=("arial", 22), background='#28282B', foreground='#FAEDE3')
             showingResults.pack()
             showingResults.place(x=10, y=40, width=900, height=75)
             if(results==""): #if no results found
                 showingResults.configure(text="No results found for " + entry)
             else:
                 allFound=results.split('\n')
-                songLabel=tkinter.Label(root, anchor=tkinter.W,text="Songs:", background='#28282B', foreground='#FAEDE3').grid(row=1, column=0, sticky=tkinter.W, pady=2)
+                print(results)
+                songLabel=tkinter.Label(root, font=("arial", 19), anchor=tkinter.W,text="Songs:", 
+                                        background='#28282B', foreground='#FAEDE3')
                 songLabel.pack()
-                albumLabel=tkinter.Label(root, anchor=tkinter.W,text="Albums:", background='#28282B', foreground='#FAEDE3').grid(row=2, column=0, sticky=tkinter.W, pady=2)
+                songLabel.place(x=10, y=120, width=900, height=75)
+                albumLabel=tkinter.Label(root,font=("arial", 19), anchor=tkinter.W,text="Albums:", 
+                                         background='#28282B', foreground='#FAEDE3')
                 albumLabel.pack()
-                artistLabel=tkinter.Label(root, anchor=tkinter.W,text="Artists:", background='#28282B', foreground='#FAEDE3').grid(row=3, column=0, sticky=tkinter.W, pady=2)
+                albumLabel.place(x=10, y=295, width=900, height=75)
+                artistLabel=tkinter.Label(root, font=("arial", 19), anchor=tkinter.W,text="Artists:", 
+                                          background='#28282B', foreground='#FAEDE3')
                 artistLabel.pack()
-                countSongs=0
-                countAlbums=0
-                countArtists=0
+                artistLabel.place(x=10, y=470, width=900, height=75)
+                count=[0,0,0]
+                prevWidth=[0,0,0]
+                def playSong(name):
+                    pass
                 for i in range(len(allFound)-1):
-                    splitted=allFound[i].split('$')
+                    splitted=allFound[i].split(';')
                     if entry in splitted[0]:
                         name=splitted[0]
                         album=splitted[1]
                         artist=splitted[2]
-                        countSongs+=1
-                        
+                        count[0]+=1
+                        width=(max([len(name), len(album), len(artist)])*10)+30
+                        def PlaySong():
+                            playSong(splitted[3])
+                            print(splitted[3])
+                        song=tkinter.Button(root, anchor=tkinter.W,command=PlaySong, background='#28282B',
+                                             foreground='#FAEDE3', activebackground='black', activeforeground='#FAEDE3')
+                        song.pack()
+                        song.place(x=(10+ (i*(prevWidth[0]+20))), y=200, width=width, height=75)
+                        song.configure(text=(name+'\nBy: '+artist+"\nIn: "+album))
+                        prevWidth[0]=width
+
                     if entry in splitted[1]:
                         album=splitted[1]
                         artist=splitted[2]
-                        countAlbums+=1
+                        count[1]+=1
+                        width=(max([len(album), len(artist)])*10)+30
+                        
+                        song=tkinter.Button(root, anchor=tkinter.W, background='#28282B', foreground='#FAEDE3', 
+                                            activebackground='black', activeforeground='#FAEDE3')
+                        song.pack()
+                        song.place(x=(10+ (i*(prevWidth[1]+20))), y=375, width=width, height=75)
+                        song.configure(text=(album+'\nBy: '+artist))
+                        prevWidth[1]=width
                     if entry in splitted[2]:
                         artist=splitted[2]
-                        countArtists+=1
+                        count[2]+=1
+                        width=(len(artist)*10)+30
+                        
+                        song=tkinter.Button(root, anchor=tkinter.W, background='#28282B', foreground='#FAEDE3', 
+                                            activebackground='black', activeforeground='#FAEDE3')
+                        song.pack()
+                        song.place(x=(10+ (i*(prevWidth[2]+20))), y=550, width=width, height=75)
+                        song.configure(text=artist)
+                        prevWidth[2]=width
+
+                if count[0]==0:
+                    noSongs=tkinter.Label(root, anchor=tkinter.W,font=("arial", 19),text="No songs found",
+                                          background='#28282B', foreground='#FAEDE3')
+                    noSongs.pack()
+                    noSongs.place(x=40, y=200, width=250, height=30)
+                if count[1]==0:
+                    noSongs=tkinter.Label(root, anchor=tkinter.W,font=("arial", 19),text="No albums found",
+                                          background='#28282B', foreground='#FAEDE3')
+                    noSongs.pack()
+                    noSongs.place(x=40, y=375, width=250, height=30)
+                if count[2]==0:
+                    noSongs=tkinter.Label(root, anchor=tkinter.W,font=("arial", 19),text="No artists found",
+                                          background='#28282B', foreground='#FAEDE3')
+                    noSongs.pack()
+                    noSongs.place(x=40, y=550, width=250, height=30)
         else:
             pass
 

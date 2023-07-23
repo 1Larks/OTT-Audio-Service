@@ -1,3 +1,5 @@
-The songs are downloaded to my machine, I won't upload them because I don't know if its legal. the songs should be saved like below
-SongName$Album$Artist
-of course this text should be deleted
+Book Of Saturday;Larks' Tounges In Aspic;King Crimson;1
+Rosenrot;Rosenrot;Rammstein;2
+
+
+
