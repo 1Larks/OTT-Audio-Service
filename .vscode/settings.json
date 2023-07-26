@@ -3,6 +3,10 @@
         "types.h": "c",
         "unistd.h": "c",
         "inet.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "string.h": "c",
+        "socket.h": "c",
+        "servutils.h": "c",
+        "errno.h": "c"
     }
 }

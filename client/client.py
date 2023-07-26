@@ -1,6 +1,7 @@
 import socket
 import tkinter
-import AudioBuffer
+import Audio
+
 #TODO: login system, improve search system
 
 #Server config
@@ -15,24 +16,29 @@ root.geometry('900x700')
 root.resizable(False, False)
 root['background']='#28282B'
 
-USERNAME=""
+lastID=""
 
-audioBuffer=AudioBuffer.Audio_Buffer()
+audio_handler=Audio.AudioHandler(sock)
+playButton=tkinter.Button
 
-def playSong(songID):
-    sock.send("PLAY:"+songID)
-    audioBuffer.startAudioThread()
-    i=1
-    while audioBuffer.playing:
-        data=sock.recv(AudioBuffer.ChunkSize)
-        if data.rstrip(b'\x00').decode()=="Done":
-            audioBuffer.playing=False
-        else:
-            audioBuffer.addChunk(data, i)
-        
-        i+=1
+def pauseSong():
+    audio_handler.sync="PAUSE"
+    playButton=tkinter.Button(root, text="|>",command=playSong, font=("arial", 18), activebackground='black', activeforeground='#FAEDE3', background='#28282B', 
+                                foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
+    playButton.pack()
+    playButton.place(x=425, y=625, width=50, height=50)
+    audio_handler.playing=False
 
-
+def playSong(songID=lastID):
+    lastID=songID
+    audio_handler.playing=True
+    audio_handler.sync="COTNU"
+    playButton=tkinter.Button(root, text="||",command=pauseSong,font=("arial", 18), activebackground='black', activeforeground='#FAEDE3', background='#28282B', 
+                                foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
+    playButton.pack()
+    playButton.place(x=425, y=625, width=50, height=50)
+    sock.send(("PLAY:"+songID).encode())
+    audio_handler.start_audio_thread()
 
 def search(entry: str):
     global sock
@@ -177,27 +183,22 @@ def mainPage(entry: str=""):
                 artistLabel.place(x=10, y=470, width=900, height=75)
                 count=[0,0,0]
                 prevWidth=[0,0,0]
-                def playSong(name):
-                    pass
                 for i in range(len(allFound)-1):
                     splitted=allFound[i].split(';')
-                    if entry in splitted[0]:
+                    if str.lower(entry) in str.lower(splitted[0]):
                         name=splitted[0]
                         album=splitted[1]
                         artist=splitted[2]
                         count[0]+=1
                         width=(max([len(name), len(album), len(artist)])*10)+30
-                        def PlaySong():
-                            playSong(splitted[3])
-                            print(splitted[3])
-                        song=tkinter.Button(root, anchor=tkinter.W,command=PlaySong, background='#28282B',
+                        song=tkinter.Button(root, anchor=tkinter.W,command=lambda id=splitted[3]: playSong(id), background='#28282B',
                                              foreground='#FAEDE3', activebackground='black', activeforeground='#FAEDE3')
                         song.pack()
                         song.place(x=(10+ (i*(prevWidth[0]+20))), y=200, width=width, height=75)
                         song.configure(text=(name+'\nBy: '+artist+"\nIn: "+album))
                         prevWidth[0]=width
 
-                    if entry in splitted[1]:
+                    if str.lower(entry) in str.lower(splitted[1]):
                         album=splitted[1]
                         artist=splitted[2]
                         count[1]+=1
@@ -209,7 +210,7 @@ def mainPage(entry: str=""):
                         song.place(x=(10+ (i*(prevWidth[1]+20))), y=375, width=width, height=75)
                         song.configure(text=(album+'\nBy: '+artist))
                         prevWidth[1]=width
-                    if entry in splitted[2]:
+                    if str.lower(entry) in str.lower(splitted[2]):
                         artist=splitted[2]
                         count[2]+=1
                         width=(len(artist)*10)+30
@@ -237,7 +238,8 @@ def mainPage(entry: str=""):
                     noSongs.pack()
                     noSongs.place(x=40, y=550, width=250, height=30)
         else:
-            pass
+            errorLabel=tkinter.Label(root, anchor=tkinter.W, text="Error getting search results from the server.",
+                                         font=("arial", 22), background='#28282B', foreground='#FAEDE3')
 
     root.mainloop()
     sock.close()
