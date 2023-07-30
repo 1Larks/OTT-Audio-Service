@@ -76,6 +76,7 @@ int search(struct client* user, char* entry){
 }
 
 int playSong(struct client* user, char* ID, int ID_Len){
+    printf("Entered function\nsong id: %s\n", ID);
     // Path- the song's path
     // Buffer- the buffer that will be sent and updated every iteration
     // Sync- Every iteration the sync buffer will be used to syncronize the server with the client and serve for other useful things
@@ -87,7 +88,9 @@ int playSong(struct client* user, char* ID, int ID_Len){
     // Open the song on reaad bytes mode
     FILE* song=fopen(path, "rb");
     // Check that the song exists in the path mentioned above
+    printf("%s\n", path);
     if ( song==NULL ){
+        printf("Couldnt open song\n");
         return 1;
     }
     
@@ -109,9 +112,10 @@ int playSong(struct client* user, char* ID, int ID_Len){
 
         // After sending the buffer, the client needs to tell the server to continue, that creates syncronization and helps to
         // recieve and send more useful information like telling the client if the song had ended
-        bzero(sync, strlen(sync));
-        read(user->sock, &sync, sizeof(sync));
         
+        read(user->sock, &sync, sizeof(sync));
+        sync[5]='\0';
+        printf("%s\n", sync);
         // We need to check if the song has ended before we continue normally,
         // The reason that I did it that way instead of nesting it in the other if statements is that nesting it in them would be
         // less efficent and it's more easy to read that way
@@ -131,16 +135,22 @@ int playSong(struct client* user, char* ID, int ID_Len){
         // If the client sends PAUSE instead of COTNU, that means that the client has requested to pause the song
         else if ( strcmp(sync, "PAUSE") == 0){
             user->paused=1;
+            printf("Paused\n");
             //send(user->sock, "COTNU", 5, 0);
             break;
         }
+
+        bzero(sync, strlen(sync));
     }
     // Song is over
     if ( !user->paused ){
         user->bytesSent=0;
     }
     fclose(song);
-    user->lastSongID=ID;
+    bzero(buffer, BUFFER_SIZE);
+    bzero(path, strlen(path));
+    bzero(user->lastSongID, strlen(user->lastSongID));
+    strcpy(user->lastSongID, ID);
     return 0;
 }
 
@@ -150,6 +160,7 @@ int playSong(struct client* user, char* ID, int ID_Len){
 
 void handleCommands(struct client* user, char* buffer){
         //for unlogged clients
+        
         if (user->type==0){
             if (login(buffer, user)!=0){
                 if ( (send(user->sock, "LOGERR", MSGLEN,0)) <0){
@@ -175,9 +186,17 @@ void handleCommands(struct client* user, char* buffer){
             if ( strncmp(cmd, "PLAY:", 5)==0 )
             {
                 user->paused=0;
-                playSong(user, &buffer[5], sizeof(&buffer[5]));
+                
+                if ( playSong(user, &buffer[5], strlen(&buffer[5])) == 0 ){
+                    printf("Played song successfully\n");
+                }
+                else{
+                    printf("Failed to open song\n");
+                }
+                printf("left the function\n");
             }
 
         }
+        bzero(buffer, strlen(buffer));
         
 }

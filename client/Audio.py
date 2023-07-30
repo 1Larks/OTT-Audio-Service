@@ -34,6 +34,9 @@ class AudioHandler:
             chunk = self.sock.recv(CHUNK_SIZE)
             
             self.sock.send(self.sync.encode())
+            if self.sync=="PAUSE" or not chunk:
+                self.playing=False
+                break
             #status=self.sock.recv(5).decode()
             
             #if status == "FNISH":

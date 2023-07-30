@@ -101,7 +101,6 @@ int main(){
                  
             if (FD_ISSET( sd , &readfds))  
             {  
-                bzero(buffer, strlen(buffer));
                 //Check if it was for closing , and also read the 
                 //incoming message 
                 if ((valread = read( sd , buffer, BUFFER_SIZE)) == 0)  
