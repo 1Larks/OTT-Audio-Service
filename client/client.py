@@ -9,7 +9,9 @@ import Audio
 
 
 # Server config
-ADDR=("10.0.2.15", 31311)
+IP="10.0.2.15"
+PORT=31311
+ADDR=(IP, PORT)
 sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
 sock.connect(ADDR)
 
@@ -25,7 +27,7 @@ root['background']='#28282B'
 
 
 # An array containing the all the played songs
-lastSongs=[]
+last_songs=[]
 
 
 
@@ -35,16 +37,32 @@ audio_handler=Audio.AudioHandler(sock)
 
 
 # Creating an empty play button so it could appear when a song is played or paused
-playButton=tkinter.Button
+play_button=tkinter.Button
 
+
+
+def stop_playing():
+    audio_handler.sync="PAUSE"
+    while audio_handler.playing:
+        continue
+
+
+
+def on_closing():
+    if audio_handler.playing:
+        stop_playing()
+
+    root.destroy()
+
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 
 # The function tells the audio_handler var to pause the current song and changes the play button
 
 # A function to pause the currently played song
-def pauseSong():
-    audio_handler.sync="PAUSE"
-    playButton=tkinter.Button(root, text="|>",command=playSong, font=("arial", 18), activebackground='black', 
+def pause_song():
+    stop_playing()
+    playButton=tkinter.Button(root, text="|>",command=play_song, font=("arial", 18), activebackground='black', 
                               activeforeground='#FAEDE3', background='#28282B', 
                                 foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
     playButton.pack()
@@ -53,18 +71,25 @@ def pauseSong():
 
 
 # Changes the play button and starts the audio thread in the audio handler variable
-def playSong(songID=""):
-    playButton=tkinter.Button(root, text="||",command=pauseSong,font=("arial", 18), activebackground='black', 
+def play_song(songID=""):
+    playButton=tkinter.Button(root, text="||",command=pause_song,font=("arial", 18), activebackground='black', 
                               activeforeground='#FAEDE3', background='#28282B', 
                                 foreground='#FAEDE3',highlightbackground='#28282B', highlightcolor='#D9EDE3')
     playButton.pack()
     playButton.place(x=425, y=625, width=50, height=50)
     if songID != "":
-        lastSongs.append(songID)
-    sock.send(("PLAY:"+lastSongs[len(lastSongs)-1]).encode())
+        last_songs.append(songID)
+    sock.send(("PLAY:"+last_songs[len(last_songs)-1]).encode())
     audio_handler.sync="COTNU"
     audio_handler.playing=True
     audio_handler.start_audio_thread()
+
+
+
+def play_new_song(songID=""):
+    if audio_handler.playing:
+        stop_playing()
+    play_song(songID)
 
 
 
@@ -117,7 +142,7 @@ def search(entry: str):
                         count[0]+=1
                         width=(max([len(name), len(album), len(artist)])*10)+30
                         song=tkinter.Button(root, anchor=tkinter.W,
-                                            command=lambda id=splitted[3]: playSong(id), background='#28282B',
+                                            command=lambda id=splitted[3]: play_new_song(id), background='#28282B',
                                              foreground='#FAEDE3', activebackground='black', activeforeground='#FAEDE3')
                         song.pack()
                         song.place(x=(10+ (i*(prevWidth[0]+20))), y=200, width=width, height=75)
@@ -181,13 +206,14 @@ def login(username:str, password:str):
     else:
         global USERNAME
         USERNAME=username
-        mainPage()
+        main_page()
+
 
 
 # Login page
-def loginPage():
+def login_page():
     global root, sock
-    clearWindow()
+    clear_window()
     userField=tkinter.Entry(root, font=("arial", 18), background='#28282B', foreground='#FAEDE3', highlightbackground='#28282B', highlightcolor='#D9EDE3')
     userField.pack()
     userField.place(x=300, y=200, width=300, height=50)
@@ -254,9 +280,9 @@ def loginPage():
 
 
 # Main page
-def mainPage(entry: str=""):
+def main_page(entry: str=""):
     global root, sock
-    clearWindow()
+    clear_window()
     SearchBar=tkinter.Entry(root,width=15, font=("arial", 18), background='#28282B', foreground='#FAEDE3')
     SearchBar.insert(0, entry)
     SearchBar.pack()
@@ -287,11 +313,12 @@ def mainPage(entry: str=""):
 
 
 def main():
-    loginPage()
+    login_page()
+
 
 
 # Clears the main window of all its widgets
-def clearWindow():
+def clear_window():
     global root
     for widget in root.winfo_children():
         widget.destroy()

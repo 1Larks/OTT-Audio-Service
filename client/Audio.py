@@ -32,7 +32,7 @@ class AudioHandler:
         while self.playing:
             #get a chunk of audio data
             chunk = self.sock.recv(CHUNK_SIZE)
-            
+            print("Chunk recieved")
             self.sock.send(self.sync.encode())
             if self.sync=="PAUSE" or not chunk:
                 self.playing=False

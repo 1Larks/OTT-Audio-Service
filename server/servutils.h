@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <errno.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #define PORT 31311
 #define SERVER_BACKLOG 10
@@ -22,12 +23,19 @@
 //A struct for the client (user), has the user's socket, user type, name, password and some other information
 struct client{
     int sock;
+    int song_connection;
     int type;
     char name[16];
     char pass[16];
     long int bytesSent;
     int paused;
     char* lastSongID;
+    pthread_t thread;
+};
+
+struct play_song_args{
+    struct client* user;
+    char ID[5];
 };
 
 //Error Handeling:
@@ -46,7 +54,9 @@ int login(char* info, struct client* user);
 int search(struct client* user, char* entry);
 
 //A functions that sends chunks of the song's information, every chunk is 6 kilobytes, currently under some work
-int playSong(struct client* user, char* ID, int ID_Len);
+int playSong(void* external_args);
+
+void* thread_playSong(void* external_args);
 
 //Get the user who sent the command and the command itself and handles it by selecting the right function for the command
 void handleCommands(struct client* user, char* buffer);

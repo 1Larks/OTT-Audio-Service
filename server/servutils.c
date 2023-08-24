@@ -12,14 +12,15 @@ void ClientErr(const char* msg, struct client* user){
 
 void resetClient(struct client* user){
     user->sock=0;
+    user->song_connection=0;
     user->type=0;
     user->paused=0;
     user->bytesSent=0;
+    user->thread=0;
 }
 
 
 int login(char* info, struct client* user){
-
     int i=0;
     while (info[i]!=':'){
         i++;
@@ -75,8 +76,18 @@ int search(struct client* user, char* entry){
     return 0;
 }
 
-int playSong(struct client* user, char* ID, int ID_Len){
-    printf("Entered function\nsong id: %s\n", ID);
+
+
+int playSong(void* external_args){
+    struct play_song_args* arguments= external_args;
+    char ID[5];
+    strcpy(ID, arguments->ID);
+    
+    printf("ID: %s\n", arguments->ID);
+    printf("user: %s\n", arguments->user->name);
+
+    int ID_Len=strlen(ID);
+    struct client* user=arguments->user;
     // Path- the song's path
     // Buffer- the buffer that will be sent and updated every iteration
     // Sync- Every iteration the sync buffer will be used to syncronize the server with the client and serve for other useful things
@@ -106,7 +117,6 @@ int playSong(struct client* user, char* ID, int ID_Len){
         fread(buffer, 1, sizeof(buffer), song);
         // Sends the buffer to the user
         send(user->sock, buffer, sizeof(buffer), 0);
-
         // Adds the size of the buffer to the user bytesSent field, for tracking time and more useful information
         user->bytesSent+=sizeof(buffer);
 
@@ -115,6 +125,7 @@ int playSong(struct client* user, char* ID, int ID_Len){
         
         read(user->sock, &sync, sizeof(sync));
         sync[5]='\0';
+        printf("%d\n", user->sock);
         printf("%s\n", sync);
         // We need to check if the song has ended before we continue normally,
         // The reason that I did it that way instead of nesting it in the other if statements is that nesting it in them would be
@@ -154,9 +165,12 @@ int playSong(struct client* user, char* ID, int ID_Len){
     return 0;
 }
 
-
-
-
+void* thread_playSong(void* external_args){
+    if ( playSong(external_args) == 1 ){
+        ServerErr("Error in playing song.\n");
+    }
+    free(external_args);
+}
 
 void handleCommands(struct client* user, char* buffer){
         //for unlogged clients
@@ -187,13 +201,15 @@ void handleCommands(struct client* user, char* buffer){
             {
                 user->paused=0;
                 
-                if ( playSong(user, &buffer[5], strlen(&buffer[5])) == 0 ){
-                    printf("Played song successfully\n");
+                struct play_song_args* arguments=(struct play_song_args*) malloc(sizeof(struct play_song_args));
+                //bzero(arguments->ID, strlen(arguments->ID));
+                strcpy(arguments->ID,&buffer[5]);
+                arguments->user=user;
+                printf("ID: %s\n", arguments->ID);
+                if ( (pthread_create(&user->thread, NULL, thread_playSong, arguments)) != 0 ){
+                    ServerErr("Error in creating song thread.\n");
                 }
-                else{
-                    printf("Failed to open song\n");
-                }
-                printf("left the function\n");
+                
             }
 
         }

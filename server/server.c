@@ -24,7 +24,12 @@ int main(){
     //sd is socket descriptor
     int sockfd, addrlen, newSocket, activity, i, valread, sd, max_sd, readInfo;
     int opt=TRUE;
-    struct client clientSocket[SERVER_BACKLOG];
+    
+    // previous init: struct client clientSocket[SERVER_BACKLOG];
+
+    // allocating the clientSocket variables so we can pass them later as arguments to the playSong thread
+    struct client* clientSocket=(struct client*) calloc(SERVER_BACKLOG, sizeof(struct client));
+
     struct sockaddr_in address;
 
     char buffer[BUFFER_SIZE];
@@ -114,15 +119,20 @@ int main(){
                     //Close the socket and mark as 0 in list for reuse 
                     close( sd );  
                     resetClient(&clientSocket[i]);  
-                }  
+                }
                 //Handle command
                 else 
                 {  
                     printf("Recieved a msg from client: %s\n", buffer);
                     //set the string terminating NULL byte on the end 
                     //of the data read 
-                    buffer[valread] = '\0';  
-                    handleCommands(&clientSocket[i], buffer);
+                    buffer[valread] = '\0';
+                    if (strcmp("CONTNU", buffer)==0){
+                        
+                    }
+                    else{  
+                        handleCommands(&clientSocket[i], buffer);
+                    }
                 }  
             }  
         }
