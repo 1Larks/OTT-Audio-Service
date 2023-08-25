@@ -29,8 +29,9 @@ struct client{
     char pass[16];
     long int bytesSent;
     int paused;
-    char* lastSongID;
+    char lastSongID[5];
     pthread_t thread;
+    int state;
 };
 
 struct play_song_args{

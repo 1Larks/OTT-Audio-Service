@@ -17,6 +17,7 @@ void resetClient(struct client* user){
     user->paused=0;
     user->bytesSent=0;
     user->thread=0;
+    user->state=0;
 }
 
 
@@ -91,7 +92,7 @@ int playSong(void* external_args){
     // Path- the song's path
     // Buffer- the buffer that will be sent and updated every iteration
     // Sync- Every iteration the sync buffer will be used to syncronize the server with the client and serve for other useful things
-    char path[11+ID_Len], buffer[6144], sync[6];
+    char path[11+ID_Len], buffer[6144];
     // Add the song's path
     strcat(path, "songs/");
     strcat(path, ID);
@@ -123,35 +124,33 @@ int playSong(void* external_args){
         // After sending the buffer, the client needs to tell the server to continue, that creates syncronization and helps to
         // recieve and send more useful information like telling the client if the song had ended
         
-        read(user->sock, &sync, sizeof(sync));
-        sync[5]='\0';
+        // read(user->sock, &sync, sizeof(sync));
+        // sync[5]='\0';
+
         printf("%d\n", user->sock);
-        printf("%s\n", sync);
         // We need to check if the song has ended before we continue normally,
         // The reason that I did it that way instead of nesting it in the other if statements is that nesting it in them would be
         // less efficent and it's more easy to read that way
         if ( feof(song) )
         {
-            // Song has ended, let the client know and end the function.
+            // Song has ended, let the client know and end the function. - old
             //send(user->sock, "FNISH", 5, 0);
             break; 
         }
-        if ( strcmp(sync, "COTNU") == 0 ){
-             // If the server recieved "COTNU" (short for continue), send back to the user the same msg,
-             // This is useful because it can be used to tell the client when the song has ended and for getting more control
-             
-             //send(user->sock, "COTNU", 5, 0);
-             continue;
+        // wait for the client to send a "COTNU" or "PAUSE" for syncronization purposes.
+        while ( user-> state == 0 ){}
+        if ( user-> state == 1 ){
+            user->state=0;
+            continue;
         }
-        // If the client sends PAUSE instead of COTNU, that means that the client has requested to pause the song
-        else if ( strcmp(sync, "PAUSE") == 0){
-            user->paused=1;
+        // If the client sends PAUSE instead of COTNU, that means that the client has requested to pause the song and the state is 2
+        else if ( user->state == 2){
+            user->state=0;
             printf("Paused\n");
             //send(user->sock, "COTNU", 5, 0);
             break;
         }
 
-        bzero(sync, strlen(sync));
     }
     // Song is over
     if ( !user->paused ){
@@ -160,6 +159,7 @@ int playSong(void* external_args){
     fclose(song);
     bzero(buffer, BUFFER_SIZE);
     bzero(path, strlen(path));
+    printf("got here\n");
     bzero(user->lastSongID, strlen(user->lastSongID));
     strcpy(user->lastSongID, ID);
     return 0;
@@ -174,7 +174,7 @@ void* thread_playSong(void* external_args){
 
 void handleCommands(struct client* user, char* buffer){
         //for unlogged clients
-        
+
         if (user->type==0){
             if (login(buffer, user)!=0){
                 if ( (send(user->sock, "LOGERR", MSGLEN,0)) <0){
@@ -190,25 +190,32 @@ void handleCommands(struct client* user, char* buffer){
         else{
             char cmd[6];
             strncpy(cmd, buffer, MSGLEN);
+            if ( strncmp(cmd, "COTNU", MSGLEN-1) == 0 ){
+                user->state=1;
+            }
+            else if ( strncmp(cmd, "PAUSE", MSGLEN-1) == 0){
+                user->state=2;
+            }
             //search command
-            if ( strncmp(cmd,"SRCH:", 5)==0 )
+            if ( strncmp(cmd,"SRCH:", MSGLEN-1)==0 )
             { 
 
-                search(user, &buffer[5]);
+                search(user, &buffer[MSGLEN-1]);
 
             }
-            if ( strncmp(cmd, "PLAY:", 5)==0 )
+            if ( strncmp(cmd, "PLAY:", MSGLEN-1)==0 )
             {
                 user->paused=0;
                 
                 struct play_song_args* arguments=(struct play_song_args*) malloc(sizeof(struct play_song_args));
                 //bzero(arguments->ID, strlen(arguments->ID));
-                strcpy(arguments->ID,&buffer[5]);
+                strcpy(arguments->ID,&buffer[MSGLEN-1]);
                 arguments->user=user;
                 printf("ID: %s\n", arguments->ID);
                 if ( (pthread_create(&user->thread, NULL, thread_playSong, arguments)) != 0 ){
                     ServerErr("Error in creating song thread.\n");
                 }
+                
                 
             }
 

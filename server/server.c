@@ -126,13 +126,9 @@ int main(){
                     printf("Recieved a msg from client: %s\n", buffer);
                     //set the string terminating NULL byte on the end 
                     //of the data read 
-                    buffer[valread] = '\0';
-                    if (strcmp("CONTNU", buffer)==0){
-                        
-                    }
-                    else{  
-                        handleCommands(&clientSocket[i], buffer);
-                    }
+                    buffer[valread] = '\0'; 
+                    handleCommands(&clientSocket[i], buffer);
+                    
                 }  
             }  
         }
