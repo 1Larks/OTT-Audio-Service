@@ -89,6 +89,7 @@ def play_song(songID=""):
 def play_new_song(songID=""):
     if audio_handler.playing:
         stop_playing()
+        audio_handler.bytes_recieved=0
     play_song(songID)
 
 
