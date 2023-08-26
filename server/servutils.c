@@ -10,6 +10,24 @@ void ClientErr(const char* msg, struct client* user){
     send(user->sock, msg, sizeof(msg), 0);
 }
 
+int init_server_socket(struct sockaddr_in address){
+    int sockfd=socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd<0){
+        ServerErr("Error at initialising the server socket\n");
+    }
+    //setting up the server's address
+    address.sin_family= AF_INET;
+    address.sin_addr.s_addr=inet_addr("10.0.2.15");
+    address.sin_port=htons(PORT);
+
+    //binding
+    if( (bind(sockfd, (struct sockaddr*) &address, sizeof(address)))<0 ){
+        ServerErr("Error at binding\n");
+    }
+
+    return sockfd;
+}
+
 void resetClient(struct client* user){
     user->sock=0;
     user->song_connection=0;
@@ -77,32 +95,34 @@ int search(struct client* user, char* entry){
     return 0;
 }
 
+void send_song_info(FILE* song, struct client* user){
+    char wav_header[44];
+    fread(wav_header, 1, sizeof(wav_header), song);
 
+    send(user->sock, wav_header, sizeof(wav_header), 0);
+}
 
-int playSong(void* external_args){
-    struct play_song_args* arguments= external_args;
-    char ID[5];
-    strcpy(ID, arguments->ID);
+int playSong(char* ID, struct client* user){
     
-    printf("ID: %s\n", arguments->ID);
-    printf("user: %s\n", arguments->user->name);
-
     int ID_Len=strlen(ID);
-    struct client* user=arguments->user;
+
     // Path- the song's path
     // Buffer- the buffer that will be sent and updated every iteration
-    // Sync- Every iteration the sync buffer will be used to syncronize the server with the client and serve for other useful things
+
     char path[11+ID_Len], buffer[6144];
     // Add the song's path
     strcat(path, "songs/");
     strcat(path, ID);
     strcat(path, ".wav");
-    // Open the song on reaad bytes mode
+
+    // Open the song on read bytes mode
     FILE* song=fopen(path, "rb");
+
+    // Send the song's information to the client (the WAV header, which is 44 bytes long)
+    send_song_info(song, user);
+
     // Check that the song exists in the path mentioned above
-    printf("%s\n", path);
     if ( song==NULL ){
-        printf("Couldnt open song\n");
         return 1;
     }
     
@@ -146,6 +166,7 @@ int playSong(void* external_args){
         // If the client sends PAUSE instead of COTNU, that means that the client has requested to pause the song and the state is 2
         else if ( user->state == 2){
             user->state=0;
+            user->paused=1;
             printf("Paused\n");
             //send(user->sock, "COTNU", 5, 0);
             break;
@@ -159,14 +180,20 @@ int playSong(void* external_args){
     fclose(song);
     bzero(buffer, BUFFER_SIZE);
     bzero(path, strlen(path));
-    printf("got here\n");
     bzero(user->lastSongID, strlen(user->lastSongID));
     strcpy(user->lastSongID, ID);
     return 0;
 }
 
 void* thread_playSong(void* external_args){
-    if ( playSong(external_args) == 1 ){
+
+    struct play_song_args* arguments= external_args;
+    char ID[IDLEN];
+    strcpy(ID, arguments->ID);
+    
+    struct client* user=arguments->user;
+
+    if ( playSong(ID, user) == 1 ){
         ServerErr("Error in playing song.\n");
     }
     free(external_args);

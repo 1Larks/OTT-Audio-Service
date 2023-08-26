@@ -18,6 +18,7 @@
 #define FALSE 0
 #define BUFFER_SIZE 200
 #define MSGLEN 6
+#define IDLEN 5
 
 //type 0-null, 1-user 2-admin 3-artist
 //A struct for the client (user), has the user's socket, user type, name, password and some other information
@@ -29,14 +30,14 @@ struct client{
     char pass[16];
     long int bytesSent;
     int paused;
-    char lastSongID[5];
+    char lastSongID[IDLEN];
     pthread_t thread;
     int state;
 };
 
 struct play_song_args{
     struct client* user;
-    char ID[5];
+    char ID[IDLEN];
 };
 
 //Error Handeling:
@@ -44,6 +45,9 @@ struct play_song_args{
 void ServerErr(const char* msg);
 //If an error occured on the client side, no need to close the server, so send the client it's error and let it handle it
 void ClientErr(const char* msg, struct client* user);
+
+//Init the server socket, should be used only once and in the main server file
+int init_server_socket(struct sockaddr_in address);
 
 //Resets user's relevant data
 void resetClient(struct client* user);
@@ -55,7 +59,9 @@ int login(char* info, struct client* user);
 int search(struct client* user, char* entry);
 
 //A functions that sends chunks of the song's information, every chunk is 6 kilobytes, currently under some work
-int playSong(void* external_args);
+int playSong(char* ID, struct client* user);
+
+void send_song_info(FILE* song, struct client* user);
 
 void* thread_playSong(void* external_args);
 

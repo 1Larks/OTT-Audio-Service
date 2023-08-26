@@ -1,24 +1,6 @@
 
 #include "servutils.h"
 
-int init_server_socket(struct sockaddr_in address){
-    int sockfd=socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd<0){
-        ServerErr("Error at initialising the server socket\n");
-    }
-    //setting up the server's address
-    address.sin_family= AF_INET;
-    address.sin_addr.s_addr=inet_addr("10.0.2.15");
-    address.sin_port=htons(PORT);
-
-    //binding
-    if( (bind(sockfd, (struct sockaddr*) &address, sizeof(address)))<0 ){
-        ServerErr("Error at binding\n");
-    }
-
-    return sockfd;
-}
-
 //TODO: change login system- make it secure, create a LOGIN cmd for saving account info (mostly for client-side)
 int main(){
     //sd is socket descriptor
