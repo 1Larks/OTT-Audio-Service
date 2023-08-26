@@ -13,6 +13,8 @@ class AudioHandler:
         self.Audio = pyaudio.PyAudio()
         self.sync="COTNU"
         self.bytes_recieved=0
+        self.prev_sample_rate=0
+        self.prev_channels=0
     
     def recieve_wav_header(self):
         header=self.sock.recv(44)
@@ -37,9 +39,11 @@ class AudioHandler:
         thread.start()
 
     def _playAudio(self):
-        sample_rate, channels=self.recieve_wav_header()
-        
-        buffer_size=1024
+        if self.bytes_recieved==0:
+            sample_rate, channels=self.recieve_wav_header()
+        else:
+            sample_rate=self.prev_sample_rate
+            channels=self.prev_channels
         
         # Open an audio stream
         stream = self.Audio.open(
@@ -47,13 +51,15 @@ class AudioHandler:
         channels=channels,
         rate=sample_rate,
         output=True,
-        frames_per_buffer=buffer_size)
+        frames_per_buffer=1024)
         status=""
         while self.playing:
             #get a chunk of audio data
             chunk = self.sock.recv(CHUNK_SIZE)
             self.sock.send(self.sync.encode())
             if self.sync=="PAUSE":
+                self.prev_sample_rate=sample_rate
+                self.prev_channels=channels
                 self.playing=False
                 break
             if not chunk:

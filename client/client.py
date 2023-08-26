@@ -9,7 +9,7 @@ import Audio
 
 
 # Server config
-IP="10.0.2.15"
+IP="192.168.1.54"
 PORT=31311
 ADDR=(IP, PORT)
 sock=socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
