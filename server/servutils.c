@@ -17,7 +17,7 @@ int init_server_socket(struct sockaddr_in address){
     }
     //setting up the server's address
     address.sin_family= AF_INET;
-    address.sin_addr.s_addr=inet_addr("10.0.2.15");
+    address.sin_addr.s_addr=inet_addr(IP);
     address.sin_port=htons(PORT);
 
     //binding
@@ -30,7 +30,6 @@ int init_server_socket(struct sockaddr_in address){
 
 void resetClient(struct client* user){
     user->sock=0;
-    user->song_connection=0;
     user->type=0;
     user->paused=0;
     user->bytesSent=0;
@@ -108,7 +107,6 @@ int playSong(char* ID, struct client* user){
 
     // Path- the song's path
     // Buffer- the buffer that will be sent and updated every iteration
-
     char path[11+ID_Len], buffer[6144];
     // Add the song's path
     strcat(path, "songs/");
@@ -117,9 +115,6 @@ int playSong(char* ID, struct client* user){
 
     // Open the song on read bytes mode
     FILE* song=fopen(path, "rb");
-
-    // Send the song's information to the client (the WAV header, which is 44 bytes long)
-    send_song_info(song, user);
 
     // Check that the song exists in the path mentioned above
     if ( song==NULL ){
@@ -131,6 +126,10 @@ int playSong(char* ID, struct client* user){
         // start playing the song from the point the user stopped
         fseek(song, user->bytesSent, SEEK_SET);
     }
+    else{
+        // Send the song's information to the client (the WAV header, which is 44 bytes long)
+        send_song_info(song, user);
+    }
 
     while (!user->paused)
     {
@@ -138,25 +137,13 @@ int playSong(char* ID, struct client* user){
         fread(buffer, 1, sizeof(buffer), song);
         // Sends the buffer to the user
         send(user->sock, buffer, sizeof(buffer), 0);
-        // Adds the size of the buffer to the user bytesSent field, for tracking time and more useful information
+        // Adds the size of the buffer to the user bytesSent field, for tracking time and other useful information
         user->bytesSent+=sizeof(buffer);
 
-        // After sending the buffer, the client needs to tell the server to continue, that creates syncronization and helps to
-        // recieve and send more useful information like telling the client if the song had ended
-        
-        // read(user->sock, &sync, sizeof(sync));
-        // sync[5]='\0';
-
-        printf("%d\n", user->sock);
         // We need to check if the song has ended before we continue normally,
         // The reason that I did it that way instead of nesting it in the other if statements is that nesting it in them would be
         // less efficent and it's more easy to read that way
-        if ( feof(song) )
-        {
-            // Song has ended, let the client know and end the function. - old
-            //send(user->sock, "FNISH", 5, 0);
-            break; 
-        }
+        if ( feof(song) ) { break; }
         // wait for the client to send a "COTNU" or "PAUSE" for syncronization purposes.
         while ( user-> state == 0 ){}
         if ( user-> state == 1 ){

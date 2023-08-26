@@ -2,6 +2,7 @@
 #include "servutils.h"
 
 //TODO: change login system- make it secure, create a LOGIN cmd for saving account info (mostly for client-side)
+// free user's allocation
 int main(){
     //sd is socket descriptor
     int sockfd, addrlen, newSocket, activity, i, valread, sd, max_sd, readInfo;
@@ -105,7 +106,6 @@ int main(){
                 //Handle command
                 else 
                 {  
-                    printf("Recieved a msg from client: %s\n", buffer);
                     //set the string terminating NULL byte on the end 
                     //of the data read 
                     buffer[valread] = '\0'; 

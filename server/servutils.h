@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <pthread.h>
 
+#define IP "192.168.1.54"
 #define PORT 31311
 #define SERVER_BACKLOG 10
 #define TRUE 1
@@ -24,14 +25,17 @@
 //A struct for the client (user), has the user's socket, user type, name, password and some other information
 struct client{
     int sock;
-    int song_connection;
     int type;
     char name[16];
     char pass[16];
     long int bytesSent;
     int paused;
     char lastSongID[IDLEN];
+    // Each user is given a thread for playing music, I chose to use threading because a regular function with a while loop
+    // would block the server
     pthread_t thread;
+    // The state variable was created for syncronization purposes, when it's equal to 0 it means its waiting for the
+    // client to send either "COTNU" or "PAUSE". 1 is for continue and 2 is for pause
     int state;
 };
 
